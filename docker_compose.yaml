@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres-primary:
-    image: postgres:alpine
+    image: postgres:lastest-alpine
     container_name: trotamundos_db_primary
     environment:
       POSTGRES_USER: postgres
@@ -11,7 +11,28 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_primary:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d trotamundos"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-replica:
+    image: postgres:lastest-alpine
+    container_name: trotamundos_db_replica
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: trotamundos
+    ports:
+      - "5433:5432" # Se expone en el puerto 5433 para diferenciarla
+    volumes:
+      - pgdata_replica:/var/lib/postgresql/data
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
 
 volumes:
-  pgdata:
+  pgdata_primary:
+  pgdata_replica:

@@ -21,23 +21,21 @@ db-up:
 db-down:
 	@echo "==> Deteniendo contenedores de Docker..."
 	docker compose down
-
-# Ejecuta pruebas End-to-End asegurando que Docker siempre se apaga al terminar
-test-e2e: db-up
-	@echo "==> Iniciando servidor de pruebas en segundo plano..."
-	@go run main.go & SERVER_PID=$$!; \
-	trap 'echo "==> Limpiando recursos..."; kill $$SERVER_PID 2>/dev/null || true; docker compose down; exit' EXIT INT TERM; \
+# Ejecuta pruebas End-to-End usando el devserver en memoria y el script bash
+test-e2e:
+	@echo "==> Iniciando Dev Server (en memoria) en segundo plano..."
+	@go run cmd/devserver/main.go & SERVER_PID=$$!; \
+	trap 'echo "==> Limpiando recursos..."; kill $$SERVER_PID 2>/dev/null || true; exit' EXIT INT TERM; \
 	\
 	echo "==> Esperando que el servidor responda..."; \
-	until curl -s http://localhost:8080/api/trips/x/summary >/dev/null; do sleep 1; done; \
+	until curl -s http://localhost:8080/api/trips/trip-123/summary >/dev/null; do sleep 1; done; \
 	\
 	echo "==> Ejecutando script de pruebas E2E (test_api.sh)..."; \
 	bash scripts/test_api.sh; \
 	TEST_EXIT_CODE=$$?; \
 	\
-	echo "==> Deteniendo servidor y bajando Docker..."; \
+	echo "==> Deteniendo Dev Server..."; \
 	kill $$SERVER_PID; \
-	docker compose down; \
 	exit $$TEST_EXIT_CODE
 
 # Cobertura de código

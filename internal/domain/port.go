@@ -51,6 +51,7 @@ type TaskRepository interface {
 	ClaimNextPending(ctx context.Context) (*Task, error)
 	MarkDone(ctx context.Context, id string) error
 	MarkFailed(ctx context.Context, id string, reason string) error
+	MarkRetry(ctx context.Context, id string) error // Deforma la tarea a PENDING para el próximo ciclo
 }
 
 // UserRepository gestiona el almacenamiento seguro de credenciales/tokens de correo (SEC1)

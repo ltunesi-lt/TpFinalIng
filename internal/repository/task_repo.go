@@ -89,3 +89,12 @@ func (r *PostgresTaskRepository) MarkFailed(ctx context.Context, id string, reas
 	}
 	return nil
 }
+
+func (r *PostgresTaskRepository) MarkRetry(ctx context.Context, id string) error {
+	query := `UPDATE tasks SET status = 'PENDING' WHERE id = $1;`
+	_, err := r.db.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("error al devolver tarea %s a PENDING para reintento: %w", id, err)
+	}
+	return nil
+}

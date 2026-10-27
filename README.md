@@ -43,3 +43,9 @@
 ├── docker-compose.yaml# Orquestación de bases de datos para desarrollo
 ├── Makefile           # Automatización de tareas (tests, build, e2e)
 └── main.go            # Archivo principal de ejecución
+
+## Ejecucion del MVP
+Para ejecutar se debe clonar el repositorio. Para ejeuctar los test:
+make test-unit (test unitarios)
+make test-coverage (evalua el porcentaje de cobertura del total del proyecto con el MVP)
+make test-e2e (comprueba que la API, enrutadores y reglas del negocio se integran y responden)

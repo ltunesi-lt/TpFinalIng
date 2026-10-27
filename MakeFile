@@ -1,0 +1,53 @@
+.PHONY: all test-unit db-up db-down test-e2e test-coverage clean
+
+all: test-unit
+
+# Ejecuta todos los tests unitarios
+test-unit:
+	@echo "==> Ejecutando tests unitarios del sistema..."
+	go test -v ./...
+
+# Levanta la base de datos de desarrollo y espera inteligentemente
+db-up:
+	@echo "==> Levantando bases de datos PostgreSQL con Docker Compose..."
+	docker compose up -d
+	@echo "==> Esperando a que PostgreSQL esté listo..."
+	@until docker exec trotamundos_db_primary pg_isready -U postgres -d trotamundos; do \
+		sleep 1; \
+	done
+	@echo "==> ¡Base de datos lista y operativa!"
+
+# Apaga la base de datos
+db-down:
+	@echo "==> Deteniendo contenedores de Docker..."
+	docker compose down
+
+# Ejecuta pruebas End-to-End asegurando que Docker siempre se apaga al terminar
+test-e2e: db-up
+	@echo "==> Iniciando servidor de pruebas en segundo plano..."
+	@go run main.go & SERVER_PID=$$!; \
+	trap 'echo "==> Limpiando recursos..."; kill $$SERVER_PID 2>/dev/null || true; docker compose down; exit' EXIT INT TERM; \
+	\
+	echo "==> Esperando que el servidor responda..."; \
+	until curl -s http://localhost:8080/api/trips/x/summary >/dev/null; do sleep 1; done; \
+	\
+	echo "==> Ejecutando script de pruebas E2E (test_api.sh)..."; \
+	bash scripts/test_api.sh; \
+	TEST_EXIT_CODE=$$?; \
+	\
+	echo "==> Deteniendo servidor y bajando Docker..."; \
+	kill $$SERVER_PID; \
+	docker compose down; \
+	exit $$TEST_EXIT_CODE
+
+# Cobertura de código
+test-coverage:
+	@echo "==> Calculando cobertura de código..."
+	go test -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out
+	@echo "==> Generando reporte visual en HTML (coverage.html)..."
+	go tool cover -html=coverage.out -o coverage.html
+
+clean:
+	@echo "==> Limpiando artefactos temporales..."
+	rm -f coverage.out coverage.html

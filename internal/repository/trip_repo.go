@@ -32,19 +32,25 @@ func (r *PostgresTripRepository) GetSummaryByID(ctx context.Context, id string) 
 }
 
 func (r *PostgresTripRepository) UpdateSummary(ctx context.Context, id string, summary []byte) error {
-	query := `
-		UPDATE trips 
-		SET itinerary_summary = $1::jsonb, updated_at = NOW() 
-		WHERE id = $2`
+	func (r *PostgresTripRepository) UpdateSummary(ctx context.Context, id string, summary []byte, currentVersion int) error {
+    query := `
+        UPDATE trips 
+        SET itinerary_summary = $1::jsonb, 
+            version = version + 1, 
+            updated_at = NOW() 
+        WHERE id = $2 AND version = $3`
 
-	result, err := r.db.Exec(ctx, query, string(summary), id)
-	if err != nil {
-		return fmt.Errorf("error al actualizar el resumen del viaje: %w", err)
-	}
+    result, err := r.db.Exec(ctx, query, string(summary), id, currentVersion)
+    if err != nil {
+        return fmt.Errorf("error al actualizar el resumen del viaje: %w", err)
+    }
 
-	if result.RowsAffected() == 0 {
-		return fmt.Errorf("viaje con ID %s no encontrado para actualizar", id)
-	}
+    // Si RowsAffected() es 0, significa que otro proceso modificó el viaje 
+    // al mismo tiempo (colisión de versión) o el ID no existe.
+    if result.RowsAffected() == 0 {
+        return fmt.Errorf("conflicto de concurrencia o viaje no encontrado para ID %s (versión %d)", id, currentVersion)
+    }
 
-	return nil
+    return nil
+}
 }

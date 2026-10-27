@@ -75,3 +75,10 @@ type EncryptionService interface {
 	Encrypt(plaintext string) (string, error)
 	Decrypt(ciphertext string) (string, error)
 }
+// -----------------------------------------------------------------
+// Puerto de Consultas Analíticas (Iteración 4 - P4 / ADR-17)
+// -----------------------------------------------------------------
+
+type AnalyticsRepository interface {
+	GetTravelTrends(ctx context.Context) ([]byte, error)
+}

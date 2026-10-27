@@ -1,0 +1,7 @@
+{
+  "welcome_message": "Bienvenido a Trotamundos",
+  "trip_created": "Viaje creado exitosamente",
+  "email_linked": "Cuenta de correo vinculada correctamente",
+  "error_not_found": "El recurso solicitado no fue encontrado",
+  "unauthorized_access": "Acceso denegado al itinerario compartido"
+}

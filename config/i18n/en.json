@@ -1,0 +1,7 @@
+{
+  "welcome_message": "Welcome to Trotamundos",
+  "trip_created": "Trip created successfully",
+  "email_linked": "Email account successfully linked",
+  "error_not_found": "The requested resource was not found",
+  "unauthorized_access": "Unauthorized access to shared itinerary"
+}

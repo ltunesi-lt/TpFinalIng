@@ -1,26 +1,28 @@
- Trotamundos MVP
+ # Trotamundos MVP — Arquitectura
 
-> Sistema backend desarrollado en Go bajo los principios de **Clean Architecture** y **Puertos y Adaptadores**, diseñado para la gestión y sincronización de itinerarios de viajes con un panel de alto rendimiento y procesamiento asíncrono de tareas.
+> Sistema backend desarrollado en Go bajo los principios de **Clean Architecture** y **Puertos y Adaptadores**, diseñado para la gestión y sincronización de itinerarios de viajes con un panel de alto rendimiento y procesamiento asíncrono de tareas. Incluye un módulo de asistente conversacional (chatbot) con derivación a agencias asociadas y soporte multilingüe.
 
 ---
 
 ## Características Principales
 
-* **Arquitectura Limpia (Clean Architecture):** Desacoplamiento estricto entre dominio, casos de uso, infraestructura y delivery (HTTP).
-* **Panel de Viajes Optimizado (P2, P3 / ADR-09):** Almacenamiento y consulta de resúmenes de itinerarios mediante columnas `JSONB` en PostgreSQL para máxima velocidad de respuesta sin *joins* pesados.
-* **Control Optimista de Concurrencia (ADR-09):** Mecanismo de control mediante versiones (`version`) para evitar colisiones de datos ante actualizaciones concurrentes de workers o ediciones manuales.
-* **Cola de Tareas Asíncronas (ADR-06 / ADR-16):** Procesamiento en segundo plano utilizando `FOR UPDATE SKIP LOCKED` para garantizar la ejecución segura de tareas (`EMAIL_SCAN`, `FETCH_PROVIDER_UPDATE`) sin bloqueo de lecturas.
-* **Seguridad y Privacidad (SEC1 & SEC2):** 
+* **Arquitectura Limpia (Clean Architecture):** desacoplamiento estricto entre dominio, casos de uso, infraestructura y delivery (HTTP).
+* **Panel de Viajes Optimizado (P2, P3 / ADR-09):** almacenamiento y consulta de resúmenes de itinerarios mediante columnas `JSONB` en PostgreSQL, sin *joins* pesados.
+* **Control Optimista de Concurrencia (ADR-09):** control por versiones (`version`) para evitar colisiones ante actualizaciones concurrentes de workers o ediciones manuales.
+* **Cola de Tareas Asíncronas (ADR-06 / ADR-16):** procesamiento en segundo plano con `FOR UPDATE SKIP LOCKED` para ejecutar tareas (`EMAIL_SCAN`, `FETCH_PROVIDER_UPDATE`) sin bloquear lecturas.
+* **Seguridad y Privacidad (SEC1 & SEC2):**
   * Cifrado robusto de tokens OAuth de correo electrónico.
-  * Generación de enlaces compartidos de itinerarios con soporte para revocación instantánea.
-* **Automatización Total:** Gestión completa del ciclo de pruebas y contenedores mediante un `Makefile`.
+  * Enlaces compartidos de itinerarios con revocación instantánea.
+* **Manejo seguro de errores (ADR-32):** los errores internos se registran en el servidor y al cliente se le devuelve un mensaje genérico, sin exponer detalles.
+* **Defensa ante payloads abusivos:** el endpoint del chatbot limita el body a 1 MB.
+* **Automatización total:** gestión del ciclo de pruebas y contenedores mediante un `Makefile`.
 
 ---
 
 ## Tecnologías Utilizadas
 
 * **Lenguaje:** Go (Golang)
-* **Base de Datos:** PostgreSQL 15 (con soporte para replicación y contenedores Docker)
+* **Base de datos:** PostgreSQL 15 (con soporte para replicación y contenedores Docker)
 * **Driver DB:** `pgx/v5` (con soporte para `DBTX`)
 * **Infraestructura:** Docker Compose
 * **Automatización:** Make / Bash scripts
@@ -31,143 +33,44 @@
 
 ```text
 .
-├── cmd/               # Puntos de entrada de la aplicación (servidores, CLI)
+├── cmd/               # Puntos de entrada (servidores, CLI). Incluye devserver (en memoria)
 ├── config/            # Configuraciones globales y traducciones (i18n)
+├── docs/              # Documentación (arquitectura, manual y casos de uso del chatbot)
 ├── internal/          # Lógica interna del negocio (Clean Architecture)
-│   ├── delivery/      # Controladores HTTP y rutas
-│   ├── domain/        # Entidades de dominio, contratos y puertos
+│   ├── delivery/      # Controladores HTTP y rutas (incluye chat_handler.go)
+│   ├── domain/        # Entidades de dominio, contratos y puertos (incluye chat.go)
 │   ├── repository/    # Adaptadores de base de datos (PostgreSQL / pgx)
-│   ├── usecase/       # Casos de uso de la aplicación
+│   ├── usecase/       # Casos de uso (incluye chat_usecase.go)
 │   └── worker/        # Procesadores de tareas en segundo plano
-├── scripts/           # Scripts de pruebas E2E (test_api.sh)
+├── scripts/           # Scripts de pruebas: test_api.sh (E2E) y demo_chat.sh (demo del chatbot)
 ├── docker-compose.yaml# Orquestación de bases de datos para desarrollo
-├── Makefile           # Automatización de tareas (tests, build, e2e)
+├── Makefile           # Automatización de tareas (tests, build, e2e, demo)
 └── main.go            # Archivo principal de ejecución
-
-## Ejecucion del MVP
-Para ejecutar se debe clonar el repositorio. Para ejeuctar los test:
-make test-unit (test unitarios)
-make test-coverage (evalua el porcentaje de cobertura del total del proyecto con el MVP)
-make test-e2e (comprueba que la API, enrutadores y reglas del negocio se integran y responden)
-=======
-
-# 🌍 Trotamundos API — Módulo Asistente Conversacional (Chatbot)
-
-Este proyecto implementa el soporte de primer nivel para la plataforma **Trotamundos** mediante un chatbot conversacional integrado dentro de una arquitectura limpia en Go (`domain`, `usecase`, `delivery`). El sistema gestiona estados, derivaciones complejas a agencias asociadas y soporte multilingüe sin modificar el núcleo existente.
-
----
-
-El script `scripts/demo_chat.sh` se encarga de todo el flujo:
-
-1. Inicia el `devserver` en segundo plano (log en `/tmp/trotamundos_devserver.log`).
-2. Espera hasta 15 segundos a que el servidor responda.
-3. Ejecuta los escenarios del chatbot y muestra, para cada uno, el request enviado, el status HTTP y el body recibido.
-4. Valida automáticamente que cada respuesta tenga status `200` y el valor esperado del campo `escalated`.
-5. Detiene el servidor al terminar (incluso si el script se interrumpe).
-6. Imprime un resumen final con la cantidad de casos OK y fallidos.
-
-**Escenarios validados:**
-
-| Escenario | Mensaje | Idioma | `escalated` esperado |
-| --- | --- | --- | --- |
-| Saludo / consulta general (i18n) | `Hola, necesito asistencia` | `es` | `false` |
-| Estado de viaje (dominio) | `estado de mi viaje` | `es` | `false` |
-| Caso complejo: derivación a la agencia | `Tengo un problema grave y quiero cancelar mi pasaje urgente` | `es` | `true` |
-| Soporte i18n | `Hello, I need help` | `en` | `false` |
-
-**Salida de ejemplo:**
-
-```text
-▶ Iniciando devserver en :8080...
-
-── Caso complejo: derivación a la agencia
-   → {"message": "Tengo un problema grave y quiero cancelar mi pasaje urgente", "lang": "es"}
-   ← [200] {...,"escalated":true}
-   ✓ OK
-
-════════════════════════════════
-Resultado: 4 OK, 0 fallidos
-════════════════════════════════
-```
-
-**Código de salida:** el script termina con código `0` si todos los casos pasan y distinto de `0` si alguno falla (o si el servidor no logra iniciar), por lo que también puede usarse en un pipeline de CI.
-
-**Requisitos:** `go`, `curl` y `bash` disponibles en el entorno.
-
-**Variable opcional:** `PORT` define el puerto contra el que el script realiza las peticiones (por defecto `8080`). Debe coincidir con el puerto en el que escucha el `devserver`.
-
-```bash
-PORT=8080 ./scripts/demo_chat.sh
-```
-
-> Si el script no tiene permisos de ejecución, otorgalos con `chmod +x scripts/demo_chat.sh`.
-
-### Opción B — Pruebas manuales con `curl`
-
-#### 1. Iniciar el servidor localmente
-
-```bash
-make run
-```
-
-*Esto levantará el servidor de desarrollo en el puerto `:8080` utilizando un viaje precargado de ejemplo (`trip-123`).*
-
-#### 2. Probar el Chatbot
-
-Abrí otra terminal y probá los distintos escenarios del asistente enviando peticiones POST al endpoint `/api/chat`:
-
-**Consulta general o saludo (soporte i18n):**
-
-```bash
-curl -s -X POST http://localhost:8080/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hola, necesito asistencia", "lang": "es"}'
-```
-
-**Consulta de estado de viaje (interacción con dominio):**
-
-```bash
-curl -s -X POST http://localhost:8080/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "estado de mi viaje", "lang": "es"}'
-```
-
-**Caso complejo / derivación automática a la agencia (`escalated: true`):**
-
-```bash
-curl -s -X POST http://localhost:8080/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Tengo un problema grave y quiero cancelar mi pasaje urgente", "lang": "es"}'
 ```
 
 ---
 
-## 🛠️ Comandos Disponibles en el Makefile
+## Módulo del Chatbot
 
-El proyecto cuenta con un `Makefile` optimizado para simplificar la ejecución de pruebas y tareas administrativas:
+Integrado sin modificar el núcleo existente, siguiendo las mismas capas:
 
-| Comando | Descripción |
-| --- | --- |
-| **`make run`** | Levanta el servidor de desarrollo en memoria en el puerto `8080` para pruebas manuales con `curl`. |
-| **`make demo`** | Levanta el servidor, ejecuta automáticamente los escenarios del chatbot (`scripts/demo_chat.sh`), valida las respuestas y apaga el servidor al finalizar. |
-| **`make test-unit`** | Ejecuta todos los tests unitarios del sistema de forma automatizada. |
-| **`make test-e2e`** | Ejecuta las pruebas End-to-End utilizando el servidor en memoria y el script de validación bash (`scripts/test_api.sh`). |
-| **`make db-up`** | Levanta los contenedores oficiales de PostgreSQL (Primario y Réplica) mediante Docker Compose (opcional para entornos reales). |
-| **`make db-down`** | Detiene los contenedores de Docker de la base de datos. |
-| **`make test-coverage`** | Calcula la cobertura de código y genera un reporte visual en HTML (`coverage.html`). |
-| **`make clean`** | Limpia los artefactos temporales y reportes de cobertura generados. |
+| Capa | Archivo | Responsabilidad |
+| --- | --- | --- |
+| Domain | `internal/domain/chat.go` | `ChatRequest` y `ChatResponse`. |
+| Usecase | `internal/usecase/chat_usecase.go` | Reglas por palabras clave (es/en), estado del viaje con destino dinámico, escalamiento e i18n. |
+| Delivery | `internal/delivery/chat_handler.go` | `POST /api/chat`: límite de 1 MB, errores `400`/`500` y respuesta JSON. |
 
-> **Diferencia entre `make demo` y `make test-e2e`:** `demo` está pensado como una demostración rápida y legible del comportamiento del chatbot (muestra request y response de cada escenario), mientras que `test-e2e` valida la API en general mediante `scripts/test_api.sh`.
+Detalle en el [Manual del Chatbot](chatbot.md).
 
 ---
 
-## 📂 Estructura del Módulo del Chatbot
+## Ejecución del MVP
 
-El desarrollo sigue estrictamente los principios de **Clean Architecture**:
+Para ejecutar, clonar el repositorio. Pruebas disponibles:
 
-* **`internal/domain/chat.go`**: Define las estructuras de datos de entrada y salida (`ChatRequest`, `ChatResponse`).
-* **`internal/usecase/chat_usecase.go`**: Contiene la lógica de negocio, reglas basadas en palabras clave (para escalamiento) y soporte multilingüe mediante el módulo i18n.
-* **`internal/delivery/chat_handler.go`**: Expone el controlador HTTP que recibe las peticiones JSON y maneja las respuestas del servidor.
-* **`cmd/devserver/main.go`**: Servidor en memoria optimizado para pruebas limpias y rápidas.
-* **`scripts/demo_chat.sh`**: Script de demostración que levanta el `devserver`, ejecuta los escenarios del chatbot y valida automáticamente las respuestas.
-* **`scripts/test_api.sh`**: Script de validación utilizado por `make test-e2e`.
+* `make test-unit`: tests unitarios.
+* `make test-coverage`: porcentaje de cobertura del proyecto (reporte `coverage.html`).
+* `make test-e2e`: verifica que la API, los enrutadores y las reglas de negocio se integran y responden.
+* `make demo`: demostración automática del chatbot.
+
+Guía completa en el [README](../README.md).

@@ -1,4 +1,4 @@
-.PHONY: all test-unit db-up db-down test-e2e test-coverage clean run
+.PHONY: all test-unit db-up db-down test-e2e test-coverage clean run demo
 
 all: test-unit
 
@@ -6,6 +6,7 @@ all: test-unit
 run:
 	@echo "==> Iniciando servidor Trotamundos (Dev Server en memoria)..."
 	go run cmd/devserver/main.go
+
 demo:
 	@echo "==> Iniciando demostración del chatbot de Trotamundos..."
 	@./scripts/demo_chat.sh
@@ -28,22 +29,12 @@ db-down:
 	@echo "==> Deteniendo contenedores de Docker..."
 	docker compose down
 
-# Ejecuta pruebas End-to-End usando el devserver en memoria y timeout (sin sleeps)
+# Ejecuta pruebas End-to-End completas (test_api.sh + demo_chat.sh) con el devserver en memoria
+# Ejecuta pruebas End-to-End completas (test_api.sh + demo_chat.sh) con el devserver en memoria
+.PHONY: test-e2e
 test-e2e:
-	@echo "==> Iniciando Dev Server (en memoria) en segundo plano..."
-	@go run cmd/devserver/main.go & SERVER_PID=$$!; \
-	trap 'echo "==> Limpiando recursos..."; kill $$SERVER_PID 2>/dev/null || true; exit' EXIT INT TERM; \
-	\
-	echo "==> Esperando que el servidor responda..."; \
-	timeout 15s bash -c 'until curl -s http://localhost:8080/api/trips/trip-123/summary >/dev/null; do :; done'; \
-	\
-	echo "==> Ejecutando script de pruebas E2E (test_api.sh)..."; \
-	bash scripts/test_api.sh; \
-	TEST_EXIT_CODE=$$?; \
-	\
-	echo "==> Deteniendo Dev Server..."; \
-	kill $$SERVER_PID; \
-	exit $$TEST_EXIT_CODE
+	@bash scripts/run_e2e.sh
+
 
 # Cobertura de código
 test-coverage:
@@ -55,4 +46,4 @@ test-coverage:
 
 clean:
 	@echo "==> Limpiando artefactos temporales..."
-	rm -f coverage.out coverage.html
+	rm -f coverage.out coverage.html devserver.log

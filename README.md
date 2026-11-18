@@ -1,4 +1,4 @@
-# 🌍 Trotamundos API — Módulo Asistente Conversacional (Chatbot)
+# 🌍 Trotamundos API - Mock up
 
 Este proyecto implementa el soporte de primer nivel para la plataforma **Trotamundos** mediante un chatbot conversacional integrado dentro de una arquitectura limpia en Go (`domain`, `usecase`, `delivery`). El sistema gestiona estados de viaje, derivaciones complejas a agencias asociadas y soporte multilingüe (`es` / `en`) sin modificar el núcleo existente.
 
@@ -14,8 +14,14 @@ El proyecto incluye un entorno de desarrollo en memoria (`devserver`) que permit
 git clone <url-del-repositorio>
 cd <carpeta-del-proyecto>
 ```
+### 2.0 Prueba de la funcionalidad + chatbot
+make test-e2e
 
-### 2. Elegir cómo probar el chatbot
+### 2.1 Prueba de funcionalidad API
+En una terminal: make run
+bAbrir otra terminal y poner: bash scripts/test_api.sh
+
+### 2. 2. Elegir cómo probar el chatbot
 
 | Opción | Comando | Cuándo usarla |
 | --- | --- | --- |

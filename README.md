@@ -19,7 +19,7 @@ make test-e2e
 
 ### 2.1 Prueba de funcionalidad API
 En una terminal: make run
-bAbrir otra terminal y poner: bash scripts/test_api.sh
+Abrir otra terminal y poner: bash scripts/test_api.sh
 
 ### 2. 2. Elegir cómo probar el chatbot
 

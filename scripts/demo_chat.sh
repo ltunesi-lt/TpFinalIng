@@ -8,7 +8,7 @@ BINARY_PATH="/tmp/devserver_test_bin"
 echo "==> Iniciando demostración del chatbot de Trotamundos..."
 
 # Asegurar que el puerto esté libre antes de empezar
-if fuser -s "$PORT/tcp" 2>/dev/null; then
+if lsof -s "$PORT/tcp" 2>/dev/null; then
   echo "⚠️ El puerto $PORT está ocupado. Liberándolo..."
   fuser -k "$PORT/tcp" 2>/dev/null || true
   sleep 1

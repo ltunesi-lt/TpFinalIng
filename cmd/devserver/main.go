@@ -120,7 +120,7 @@ func main() {
 
 	// Instanciar el enrutador HTTP
 	mux := http.NewServeMux()
-
+	
 	// Instanciar el caso de uso del chat usando tripUC correctamente
 	chatUsecase := usecase.NewChatUsecase(tripUC)
 	chatHandler := delivery.NewChatHandler(chatUsecase)

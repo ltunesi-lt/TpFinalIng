@@ -5,19 +5,16 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/lt-tunesi/TpFinalIng/config/i18n"
 	"github.com/lt-tunesi/TpFinalIng/internal/domain"
 )
 
 type ChatUsecase struct {
-	tripUC     *TripUsecase
-	translator *i18n.Translator
+	tripUC *TripUsecase
 }
 
-func NewChatUsecase(tripUC *TripUsecase, translator *i18n.Translator) *ChatUsecase {
+func NewChatUsecase(tripUC *TripUsecase) *ChatUsecase {
 	return &ChatUsecase{
-		tripUC:     tripUC,
-		translator: translator,
+		tripUC: tripUC,
 	}
 }
 
@@ -29,8 +26,13 @@ func (uc *ChatUsecase) HandleMessage(ctx context.Context, req domain.ChatRequest
 
 	msgLower := strings.ToLower(req.Message)
 
-	// 1. Detección de escalamiento / problemas graves
-	if strings.Contains(msgLower, "cancelar") || strings.Contains(msgLower, "problema") || strings.Contains(msgLower, "urgente") || strings.Contains(msgLower, "grave") {
+	// 1. Detección bilingüe de escalamiento / problemas graves
+	isEscalated := strings.Contains(msgLower, "cancelar") || strings.Contains(msgLower, "cancel") ||
+		strings.Contains(msgLower, "problema") || strings.Contains(msgLower, "problem") ||
+		strings.Contains(msgLower, "urgente") || strings.Contains(msgLower, "urgent") ||
+		strings.Contains(msgLower, "grave") || strings.Contains(msgLower, "serious")
+
+	if isEscalated {
 		var replyText string
 		if lang == "en" {
 			replyText = "We have detected a complex issue. Your case has been forwarded to our partner travel agency for personalized assistance."
@@ -43,8 +45,11 @@ func (uc *ChatUsecase) HandleMessage(ctx context.Context, req domain.ChatRequest
 		}, nil
 	}
 
-	// 2. Consulta de estado del viaje (conectado al TripUsecase real)
-	if strings.Contains(msgLower, "estado") || strings.Contains(msgLower, "viaje") {
+	// 2. Consulta bilingüe de estado del viaje (conectado al TripUsecase real)
+	isTripQuery := strings.Contains(msgLower, "estado") || strings.Contains(msgLower, "status") ||
+		strings.Contains(msgLower, "viaje") || strings.Contains(msgLower, "trip")
+
+	if isTripQuery {
 		summaryBytes, err := uc.tripUC.GetItinerarySummary(ctx, "trip-123")
 		var replyText string
 

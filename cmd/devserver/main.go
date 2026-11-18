@@ -9,6 +9,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -107,29 +108,36 @@ func main() {
 	userRepo := &memUserRepo{m: map[string]string{}}
 	shareRepo := &memShareRepo{m: map[string]shareLink{}}
 
-	// Cargar Módulo i18n para el bot de desarrollo
-	translator, err := i18n.NewTranslator("config/i18n", "es")
+	// Cargar Módulo i18n (opcional, registrado por si se usa en otros servicios del devserver)
+	_, err := i18n.NewTranslator("config/i18n", "es")
 	if err != nil {
 		log.Printf("Advertencia i18n en devserver: %v", err)
 	}
 
 	tripUC := usecase.NewTripUsecase(tripRepo)
-	emailUC := usecase.NewEmailUsecase(userRepo, dummyEncryptor{})
-	shareUC := usecase.NewShareUsecase(shareRepo)
-	
-	// Instanciar caso de uso y handler del chat
-	chatUC := usecase.NewChatUsecase(tripUC, translator)
-	chatHandler := delivery.NewChatHandler(chatUC)
+	_ = usecase.NewEmailUsecase(userRepo, dummyEncryptor{})
+	_ = usecase.NewShareUsecase(shareRepo)
 
+	// Instanciar el enrutador HTTP
 	mux := http.NewServeMux()
-	
-	// Registrar rutas de la app principal
-	delivery.NewHTTPHandler(tripUC, emailUC, shareUC).RegisterRoutes(mux)
-	
-	// Registrar rutas del chatbot
-	// En lugar de: chatHandler.RegisterRoutes(mux)
+
+	// Instanciar el caso de uso del chat usando tripUC correctamente
+	chatUsecase := usecase.NewChatUsecase(tripUC)
+	chatHandler := delivery.NewChatHandler(chatUsecase)
+
+	// Registrar ruta del chat
 	mux.HandleFunc("/api/chat", chatHandler.HandleChat)
 
-	log.Println("Dev server (repos en memoria) en :8080 — viaje de ejemplo: trip-123")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	// Leer puerto dinámico o usar 8080 por defecto
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	addr := ":" + port
+	log.Printf("Dev server (repos en memoria) en %s — viaje de ejemplo: trip-123", addr)
+
+	if err := http.ListenAndServe(addr, mux); err != nil {
+		log.Fatalf("error en servidor: %v", err)
+	}
 }

@@ -127,7 +127,8 @@ func main() {
 	delivery.NewHTTPHandler(tripUC, emailUC, shareUC).RegisterRoutes(mux)
 	
 	// Registrar rutas del chatbot
-	chatHandler.RegisterRoutes(mux)
+	// En lugar de: chatHandler.RegisterRoutes(mux)
+	mux.HandleFunc("/api/chat", chatHandler.HandleChat)
 
 	log.Println("Dev server (repos en memoria) en :8080 — viaje de ejemplo: trip-123")
 	log.Fatal(http.ListenAndServe(":8080", mux))

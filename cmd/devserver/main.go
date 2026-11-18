@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/lt-tunesi/TpFinalIng/config/i18n"
 	"github.com/lt-tunesi/TpFinalIng/internal/delivery"
 	"github.com/lt-tunesi/TpFinalIng/internal/usecase"
 )
@@ -106,12 +107,27 @@ func main() {
 	userRepo := &memUserRepo{m: map[string]string{}}
 	shareRepo := &memShareRepo{m: map[string]shareLink{}}
 
+	// Cargar Módulo i18n para el bot de desarrollo
+	translator, err := i18n.NewTranslator("config/i18n", "es")
+	if err != nil {
+		log.Printf("Advertencia i18n en devserver: %v", err)
+	}
+
+	tripUC := usecase.NewTripUsecase(tripRepo)
+	emailUC := usecase.NewEmailUsecase(userRepo, dummyEncryptor{})
+	shareUC := usecase.NewShareUsecase(shareRepo)
+	
+	// Instanciar caso de uso y handler del chat
+	chatUC := usecase.NewChatUsecase(tripUC, translator)
+	chatHandler := delivery.NewChatHandler(chatUC)
+
 	mux := http.NewServeMux()
-	delivery.NewHTTPHandler(
-		usecase.NewTripUsecase(tripRepo),
-		usecase.NewEmailUsecase(userRepo, dummyEncryptor{}),
-		usecase.NewShareUsecase(shareRepo),
-	).RegisterRoutes(mux)
+	
+	// Registrar rutas de la app principal
+	delivery.NewHTTPHandler(tripUC, emailUC, shareUC).RegisterRoutes(mux)
+	
+	// Registrar rutas del chatbot
+	chatHandler.RegisterRoutes(mux)
 
 	log.Println("Dev server (repos en memoria) en :8080 — viaje de ejemplo: trip-123")
 	log.Fatal(http.ListenAndServe(":8080", mux))

@@ -1,34 +1,41 @@
-.PHONY: all test-unit db-up db-down test-e2e test-coverage clean
+.PHONY: all test-unit db-up db-down test-e2e test-coverage clean run
 
 all: test-unit
+
+# Ejecuta el servidor de desarrollo en memoria (Ideal para revisión rápida del profesor)
+run:
+	@echo "==> Iniciando servidor Trotamundos (Dev Server en memoria)..."
+	go run cmd/devserver/main.go
+demo:
+	@echo "==> Iniciando demostración del chatbot de Trotamundos..."
+	@./scripts/demo_chat.sh
 
 # Ejecuta todos los tests unitarios
 test-unit:
 	@echo "==> Ejecutando tests unitarios del sistema..."
 	go test -v ./...
 
-# Levanta la base de datos de desarrollo y espera inteligentemente
+# Levanta la base de datos de desarrollo usando el timeout nativo de pg_isready (sin sleeps)
 db-up:
 	@echo "==> Levantando bases de datos PostgreSQL con Docker Compose..."
 	docker compose up -d
 	@echo "==> Esperando a que PostgreSQL esté listo..."
-	@until docker exec trotamundos_db_primary pg_isready -U postgres -d trotamundos; do \
-		sleep 1; \
-	done
+	docker exec trotamundos_db_primary pg_isready -U postgres -d trotamundos -t 30
 	@echo "==> ¡Base de datos lista y operativa!"
 
 # Apaga la base de datos
 db-down:
 	@echo "==> Deteniendo contenedores de Docker..."
 	docker compose down
-# Ejecuta pruebas End-to-End usando el devserver en memoria y el script bash
+
+# Ejecuta pruebas End-to-End usando el devserver en memoria y timeout (sin sleeps)
 test-e2e:
 	@echo "==> Iniciando Dev Server (en memoria) en segundo plano..."
 	@go run cmd/devserver/main.go & SERVER_PID=$$!; \
 	trap 'echo "==> Limpiando recursos..."; kill $$SERVER_PID 2>/dev/null || true; exit' EXIT INT TERM; \
 	\
 	echo "==> Esperando que el servidor responda..."; \
-	until curl -s http://localhost:8080/api/trips/trip-123/summary >/dev/null; do sleep 1; done; \
+	timeout 15s bash -c 'until curl -s http://localhost:8080/api/trips/trip-123/summary >/dev/null; do :; done'; \
 	\
 	echo "==> Ejecutando script de pruebas E2E (test_api.sh)..."; \
 	bash scripts/test_api.sh; \

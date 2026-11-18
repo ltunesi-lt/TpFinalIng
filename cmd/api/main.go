@@ -90,6 +90,7 @@ func main() {
 	emailUC := usecase.NewEmailUsecase(userRepo, encryptor)
 	shareUC := usecase.NewShareUsecase(shareRepo)
 	_ = usecase.NewAnalyticsUsecase(analyticsRepo)
+	chatUC := usecase.NewChatUsecase(tripUC, translator)
 
 	// 6. Configurar e Iniciar Background Worker
 	taskWorker := worker.NewTaskWorker(taskRepo, 3*time.Second, 3)
@@ -110,6 +111,8 @@ func main() {
 	mux := http.NewServeMux()
 	handler := delivery.NewHTTPHandler(tripUC, emailUC, shareUC)
 	handler.RegisterRoutes(mux)
+	chatHandler := delivery.NewChatHandler(chatUC)
+	chatHandler.RegisterRoutes(mux)
 
 	server := &http.Server{
 		Addr:    ":8080",
